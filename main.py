@@ -67,8 +67,8 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_concrete_1 = QtWidgets.QHBoxLayout()
         self.layout_inside_concrete_1.addWidget(self.lineEdit)
         self.layout_inside_concrete_1.addWidget(self.label)
-
         self.layout_inside_concrete.addWidget(self.concrete_label)
+        self.layout_inside_concrete.setAlignment(self.concrete_label, QtCore.Qt.AlignCenter)
         self.layout_inside_concrete.addLayout(self.layout_inside_concrete_1)
         self.layout_inside_concrete.setAlignment(QtCore.Qt.AlignCenter)
         # self.layout_inside_concrete.addWidget(self.lineEdit)
