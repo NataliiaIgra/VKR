@@ -24,6 +24,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.push_button_plot_concrete.clicked.connect(self.plot_concrete)
         self.push_button_plot_steel.clicked.connect(self.plot_steel)
+        self.push_button_draw_section.clicked.connect(self.draw_section)
 
     def initUi(self):
         self.central_widget = QtWidgets.QWidget()
@@ -42,8 +43,10 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.tab_1 = QtWidgets.QWidget()
         self.tab_2 = QtWidgets.QWidget()
+        self.tab_3 = QtWidgets.QWidget()
         self.tab_widget.addTab(self.tab_1, "Tab 1")
         self.tab_widget.addTab(self.tab_2, "Material properties")
+        self.tab_widget.addTab(self.tab_3, "Section parameters")
 
         self.layout_tab_2 = QtWidgets.QHBoxLayout(self.tab_2)
         self.tab_2.setLayout(self.layout_tab_2)
@@ -106,6 +109,71 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.frame_concrete.setLayout(self.layout_inside_concrete)
         self.frame_steel.setLayout(self.layout_inside_steel)
 
+        self.layout_tab_3 = QtWidgets.QHBoxLayout(self.tab_3)
+        self.tab_3.setLayout(self.layout_tab_3)
+
+        self.canvas_section = MplCanvas(self, width=8, height=4, dpi=100)
+        self.canvas_section.axes.set_frame_on(False)
+        self.canvas_section.axes.set(xticks=[], yticks=[])
+        self.frame_draw_section = QtWidgets.QFrame(self.tab_3)
+        self.frame_draw_section.setFrameShape(QtWidgets.QFrame.WinPanel)
+        self.frame_draw_section.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.layout_inside_frame_draw_section = QtWidgets.QVBoxLayout()
+        self.layout_inside_frame_draw_section.addWidget(self.canvas_section)
+        self.frame_draw_section.setLayout(self.layout_inside_frame_draw_section)
+
+        self.line_edit_height = QtWidgets.QLineEdit()
+        self.line_edit_height.setMaximumWidth(100)
+        self.label_height = QtWidgets.QLabel("Height, in")
+        self.layout_inside_section_1 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_1.addWidget(self.line_edit_height)
+        self.layout_inside_section_1.addWidget(self.label_height)
+
+        self.line_edit_width = QtWidgets.QLineEdit()
+        self.line_edit_width.setMaximumWidth(100)
+        self.label_width = QtWidgets.QLabel("Width, in")
+        self.layout_inside_section_2 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_2.addWidget(self.line_edit_width)
+        self.layout_inside_section_2.addWidget(self.label_width)
+
+        self.line_edit_cover = QtWidgets.QLineEdit()
+        self.line_edit_cover.setMaximumWidth(100)
+        self.label_cover = QtWidgets.QLabel("Clear Cover, in")
+        self.layout_inside_section_3 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_3.addWidget(self.line_edit_cover)
+        self.layout_inside_section_3.addWidget(self.label_cover)
+
+        self.combobox_rebars = QtWidgets.QComboBox()
+        self.combobox_rebars.addItems(["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "14", "18"])
+        self.combobox_rebars.setMaximumWidth(100)
+        self.label_rebars = QtWidgets.QLabel("Long. Rebar size, #")
+        self.layout_inside_section_4 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_4.addWidget(self.combobox_rebars)
+        self.layout_inside_section_4.addWidget(self.label_rebars)
+
+        self.line_edit_number_rebars = QtWidgets.QLineEdit()
+        self.line_edit_number_rebars.setText("2")
+        self.line_edit_number_rebars.setMaximumWidth(100)
+        self.label_number_rebars = QtWidgets.QLabel("# Bottom Bars (Minimum 2)")
+        self.layout_inside_section_5 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_5.addWidget(self.line_edit_number_rebars)
+        self.layout_inside_section_5.addWidget(self.label_number_rebars)
+
+        self.push_button_draw_section = QtWidgets.QPushButton("Draw Section")
+
+        self.layout_inside_section = QtWidgets.QVBoxLayout()
+        self.layout_inside_section.addLayout(self.layout_inside_section_1)
+        self.layout_inside_section.addLayout(self.layout_inside_section_2)
+        self.layout_inside_section.addLayout(self.layout_inside_section_3)
+        self.layout_inside_section.addLayout(self.layout_inside_section_4)
+        self.layout_inside_section.addLayout(self.layout_inside_section_5)
+        self.layout_inside_section.addWidget(self.push_button_draw_section)
+        self.frame_section = QtWidgets.QFrame(self.tab_3)
+        self.frame_section.setLayout(self.layout_inside_section)
+
+        self.layout_tab_3.addWidget(self.frame_draw_section)
+        self.layout_tab_3.addWidget(self.frame_section)
+
         self.tab_layout.addWidget(self.tab_widget)
         self.scroll_area.setWidget(self.scroll_area_widget_contents)
 
@@ -139,6 +207,54 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.canvas_steel.axes.cla()
         self.canvas_steel.axes.plot(values[0], values[1])
         self.canvas_steel.draw()
+
+    @QtCore.Slot()
+    def draw_section(self):
+        self.canvas_section.axes.cla()
+        self.canvas_section.axes.set(xticks=[], yticks=[])
+
+        height = float(self.line_edit_height.text())
+        width = float(self.line_edit_width.text())
+        cover = float(self.line_edit_cover.text())
+        number_rebars = int(self.line_edit_number_rebars.text())
+
+        rect = matplotlib.patches.Rectangle((0.0, 0.0), width, height, color='silver')
+        self.canvas_section.axes.add_patch(rect)
+
+        diameters = [(2, 0.25), (3, 0.375), (4, 0.5), (5, 0.625), (6, 0.75), (7, 0.875), (8, 1), (9, 1.128), (10, 1.27),
+                     (11, 1.41), (14, 1.693), (18, 2.257)]
+        current_rebar = int(self.combobox_rebars.currentText())
+        current_diameter = float()
+
+        for i in diameters:
+            if current_rebar == i[0]:
+                current_diameter = i[1]
+                break
+
+        rebar_left = matplotlib.patches.Circle((cover + current_diameter / 2, cover + current_diameter / 2),
+                                               current_diameter / 2, color='black')
+        rebar_right = matplotlib.patches.Circle((width - cover - current_diameter / 2, cover + current_diameter / 2),
+                                                current_diameter / 2, color='black')
+
+        self.canvas_section.axes.add_patch(rebar_left)
+        self.canvas_section.axes.add_patch(rebar_right)
+
+        if number_rebars > 2:
+            space = (width - current_diameter - 2 * cover) / (number_rebars - 1)
+            for j in range(number_rebars - 2):
+                distances_for_left_rebar = cover + current_diameter / 2
+                rebar_middle = matplotlib.patches.Circle(
+                    (distances_for_left_rebar + (j + 1) * space, distances_for_left_rebar),
+                    current_diameter / 2, color='black')
+                self.canvas_section.axes.add_patch(rebar_middle)
+
+        self.canvas_section.axes.set_xlim(xmin=0, xmax=width)
+        self.canvas_section.axes.set_ylim(ymin=0, ymax=height)
+        self.canvas_section.axes.set_aspect('equal', adjustable='box')
+        self.canvas_section.axes.set_xlabel(f"Width = {width} in")
+        self.canvas_section.axes.set_ylabel(f"Height = {height} in")
+        self.canvas_section.axes.set_frame_on(True)
+        self.canvas_section.draw()
 
 
 def calculate_concrete(comp_strength_dash):
