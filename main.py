@@ -1,10 +1,14 @@
 import sys
-import math
 from PySide2 import QtCore, QtWidgets, QtGui
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+
+import resources
+from concrete_model import calculate_concrete
+from steel_model import calculate_steel
+from moment_curvature import calculate_moment_curvature
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -20,7 +24,9 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.initUi()
         self.setWindowTitle("Momcurv")
-        self.setWindowIcon(QtGui.QIcon('file.png'))
+        self.setWindowIcon(QtGui.QIcon(':/img/Resources/main-icon.png'))
+
+        self.push_button_section_type_1.clicked.connect(self.activate_tab_3)
 
         self.push_button_plot_concrete.clicked.connect(self.plot_concrete)
         self.push_button_plot_steel.clicked.connect(self.plot_steel)
@@ -49,9 +55,8 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.tab_2 = QtWidgets.QWidget()
         self.tab_3 = QtWidgets.QWidget()
         self.tab_4 = QtWidgets.QWidget()
-        self.tab_widget.addTab(self.tab_1, "Tab 1")
+        self.tab_widget.addTab(self.tab_1, "Section type")
         self.tab_widget.addTab(self.tab_2, "Material properties")
-        self.tab_widget.addTab(self.tab_3, "Section parameters")
 
         self.layout_tab_1 = QtWidgets.QGridLayout()
         section_types = ["Rectangular section", "Circular section",
@@ -79,11 +84,14 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.button_group.addButton(self.push_button_section_type_4)
         self.push_button_section_type_1.setCheckable(True)
 
-        self.push_button_section_type_1.setIcon(QtGui.QIcon('rect.png'))
+        self.push_button_section_type_1.setIcon(QtGui.QIcon(':/img/Resources/rect.png'))
         self.push_button_section_type_1.setIconSize(QtCore.QSize(200, 200))
 
-        self.push_button_section_type_2.setIcon(QtGui.QIcon('circ.png'))
+        self.push_button_section_type_2.setIcon(QtGui.QIcon(':/img/Resources/circ.png'))
         self.push_button_section_type_2.setIconSize(QtCore.QSize(200, 200))
+
+        self.push_button_section_type_3.setIcon(QtGui.QIcon(':/img/Resources/t-shape.png'))
+        self.push_button_section_type_3.setIconSize(QtCore.QSize(200, 200))
 
         self.layout_tab_1.addWidget(self.push_button_section_type_1, 0, 0)
         self.layout_tab_1.addWidget(self.push_button_section_type_2, 0, 1)
@@ -96,10 +104,16 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.tab_2.setLayout(self.layout_tab_2)
 
         self.concrete_label = QtWidgets.QLabel("Concrete Properties")
-        self.concrete_label.setFont(QtGui.QFont('Helvetica', 16))
+        self.concrete_label.setFont(QtGui.QFont('Helvetica', 12))
         self.line_edit_comp_strength = QtWidgets.QLineEdit()
+        # reg_concrete = QtCore.QRegExp("6|[1-5]{1}[.][0-9]{2}")
+        reg_concrete = QtCore.QRegExp("[1-9][0-9]*[.][0-9]*")
+        self.reg_validator_concrete = QtGui.QRegExpValidator()
+        self.reg_validator_concrete.setRegExp(reg_concrete)
+        self.line_edit_comp_strength.setValidator(self.reg_validator_concrete)
         self.line_edit_comp_strength.setText("5")
         self.line_edit_comp_strength.setMaximumWidth(100)
+        self.line_edit_comp_strength.setToolTip("Concrete compressive strength")
         self.label_comp_strength = QtWidgets.QLabel("f'c, ksi")
         self.push_button_plot_concrete = QtWidgets.QPushButton("Plot concrete model")
         self.frame_concrete = QtWidgets.QFrame(self.tab_2)
@@ -107,6 +121,8 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.frame_concrete.setFrameShadow(QtWidgets.QFrame.Raised)
         self.layout_inside_concrete = QtWidgets.QVBoxLayout()
         self.canvas_concrete = MplCanvas(self, width=5, height=5, dpi=100)
+        self.canvas_concrete.axes.set_xlabel(f"Strain, in./in.")
+        self.canvas_concrete.axes.set_ylabel(f"Stress, ksi.")
         self.layout_inside_concrete_1 = QtWidgets.QHBoxLayout()
         self.layout_inside_concrete_1.addWidget(self.line_edit_comp_strength)
         self.layout_inside_concrete_1.addWidget(self.label_comp_strength)
@@ -118,12 +134,21 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_concrete.addWidget(self.canvas_concrete)
 
         self.steel_label = QtWidgets.QLabel("Steel Properties")
-        self.steel_label.setFont(QtGui.QFont('Helvetica', 16))
+        self.steel_label.setFont(QtGui.QFont('Helvetica', 12))
         self.line_edit_yield_strength = QtWidgets.QLineEdit()
+        reg_steel_strength = QtCore.QRegExp("100|[4-9][0-9][.][0-9]{2}")
+        self.reg_validator_steel_strength = QtGui.QRegExpValidator()
+        self.reg_validator_steel_strength.setRegExp(reg_steel_strength)
+        self.line_edit_yield_strength.setValidator(self.reg_validator_steel_strength)
         self.line_edit_yield_strength.setText("60")
         self.line_edit_yield_strength.setMaximumWidth(100)
         self.label_yield_strength = QtWidgets.QLabel("fy, ksi")
         self.line_edit_steel_modulus = QtWidgets.QLineEdit()
+        reg_steel_modulus = QtCore.QRegExp("31200|"
+                                           "27[5-9][0-9][0-9]|2[89][0-9][0-9][0-9]|30[0-9][0-9][0-9]|31[01][0-9][0-9]")
+        self.reg_validator_steel_modulus = QtGui.QRegExpValidator()
+        self.reg_validator_steel_modulus.setRegExp(reg_steel_modulus)
+        self.line_edit_steel_modulus.setValidator(self.reg_validator_steel_modulus)
         self.line_edit_steel_modulus.setText("29000")
         self.line_edit_steel_modulus.setMaximumWidth(100)
         self.label_steel_modulus = QtWidgets.QLabel("Es, ksi")
@@ -133,6 +158,8 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.frame_steel.setFrameShadow(QtWidgets.QFrame.Raised)
         self.layout_inside_steel = QtWidgets.QVBoxLayout()
         self.canvas_steel = MplCanvas(self, width=5, height=5, dpi=100)
+        self.canvas_steel.axes.set_xlabel(f"Strain, in./in.")
+        self.canvas_steel.axes.set_ylabel(f"Stress, ksi.")
         self.layout_inside_steel_1 = QtWidgets.QHBoxLayout()
         self.layout_inside_steel_1.addWidget(self.line_edit_yield_strength)
         self.layout_inside_steel_1.addWidget(self.label_yield_strength)
@@ -298,11 +325,31 @@ class MyMainWindow(QtWidgets.QMainWindow):
         ...
 
     @QtCore.Slot()
+    def activate_tab_3(self):
+        if self.tab_widget.count() == 2:
+            self.tab_widget.addTab(self.tab_3, "Section properties")
+
+    @QtCore.Slot()
     def plot_concrete(self):
-        values = calculate_concrete(float(self.line_edit_comp_strength.text()))
-        self.canvas_concrete.axes.cla()
-        self.canvas_concrete.axes.plot(values[0], values[1])
-        self.canvas_concrete.draw()
+        empty_check = self.line_edit_comp_strength.text()
+        error_dialog_concrete = QtWidgets.QMessageBox()
+        error_dialog_concrete.setText('Input a value between 0.725 and 6')
+        error_dialog_concrete.setWindowTitle('Error')
+        if empty_check == "":
+            error_dialog_concrete.exec_()
+        else:
+            required_strength = float(empty_check)
+            values = calculate_concrete(required_strength)
+            if required_strength < 0.725 or required_strength > 6:
+                error_dialog_concrete.exec_()
+            else:
+                self.canvas_concrete.axes.cla()
+                self.canvas_concrete.axes.plot(values[0], values[1])
+                self.canvas_concrete.axes.set_xlabel(f"Strain, in./in.")
+                self.canvas_concrete.axes.set_ylabel(f"Stress, ksi.")
+                self.canvas_concrete.draw()
+                # self.status_bar.showMessage("Concrete model plotted")
+
 
     @QtCore.Slot()
     def plot_steel(self):
@@ -310,6 +357,8 @@ class MyMainWindow(QtWidgets.QMainWindow):
                                  float(self.line_edit_steel_modulus.text()))
         self.canvas_steel.axes.cla()
         self.canvas_steel.axes.plot(values[0], values[1])
+        self.canvas_steel.axes.set_xlabel(f"Strain, in./in.")
+        self.canvas_steel.axes.set_ylabel(f"Stress, ksi.")
         self.canvas_steel.draw()
 
     @QtCore.Slot()
@@ -398,95 +447,6 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
         self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
         self.canvas_momcurv.draw()
-
-
-def calculate_concrete(comp_strength_dash):
-    strains = list()
-    stresses = list()
-    comp_strength_double_dash = 0.9 * comp_strength_dash
-    limiting_strain = 0.0038
-    concrete_modulus = 57000 * math.sqrt(comp_strength_dash * 1000) / 1000
-    apex_strain = 1.8 * comp_strength_double_dash / concrete_modulus
-    parabola_points = 100
-    strain_increment = apex_strain / parabola_points
-    for i in range(0, parabola_points + 1):
-        calculated_strain = i * strain_increment
-        strains.append(calculated_strain)
-        calculated_stress = comp_strength_double_dash * (
-                2 * calculated_strain / apex_strain - (calculated_strain / apex_strain) ** 2)
-        stresses.append(calculated_stress)
-    strains.append(limiting_strain)
-    stresses.append(0.85 * comp_strength_double_dash)
-    return strains, stresses
-
-
-def calculate_steel(yield_strength, steel_modulus):
-    strains = [0, yield_strength / steel_modulus, 0.05]
-    stresses = [0, yield_strength, yield_strength]
-    return strains, stresses
-
-
-def calculate_moment_curvature(height, width, comp_strength_dash, yield_strength, steel_modulus, cover, rebar, number):
-    # Cracking point
-    gross_moment_of_inertia = height ** 3 * width / 12
-    modulus_of_rupture = 7.5 * math.sqrt(comp_strength_dash * 1000) / 1000
-    distance_to_tension_fiber = height / 2
-    cracking_moment = modulus_of_rupture * gross_moment_of_inertia / distance_to_tension_fiber
-    concrete_modulus = 57000 * math.sqrt(comp_strength_dash * 1000) / 1000
-    curvature_at_cracking_moment = cracking_moment / (concrete_modulus * gross_moment_of_inertia)
-    diameters = [(2, 0.25), (3, 0.375), (4, 0.5), (5, 0.625), (6, 0.75), (7, 0.875), (8, 1), (9, 1.128), (10, 1.27),
-                 (11, 1.41), (14, 1.693), (18, 2.257)]
-    areas = [(2, 0.05), (3, 0.11), (4, 0.20), (5, 0.31), (6, 0.44), (7, 0.60), (8, 0.79), (9, 1), (10, 1.27),
-             (11, 1.56), (14, 2.25), (18, 4.00)]
-    # Yielding point
-    modular_ratio = steel_modulus / concrete_modulus  # TODO
-    # singly-reinforced section
-    # !!! NOT GOOD PART
-    diameter_of_rebar = float()
-    area_of_one_rebar = float()
-    for i in diameters:
-        if rebar == i[0]:
-            diameter_of_rebar = i[1]
-            break
-    for i in areas:
-        if rebar == i[0]:
-            area_of_one_rebar = i[1]
-            break
-
-    distance_to_As = height - cover - diameter_of_rebar / 2 - 5 / 8
-    area_tension_rebars = area_of_one_rebar * number
-    phi = area_tension_rebars / (distance_to_As * width)
-    k = math.sqrt(2 * phi * modular_ratio + (phi * modular_ratio) ** 2) - phi * modular_ratio
-    yielding_moment = area_tension_rebars * yield_strength * (distance_to_As - k * distance_to_As / 3)
-    yield_strain = yield_strength / steel_modulus
-    curvature_at_yielding_moment = yield_strain / (distance_to_As - k * distance_to_As)
-    # Ultimate point
-    if comp_strength_dash <= 4:
-        b1 = 0.85
-    elif 4 < comp_strength_dash <= 8:
-        b1 = 0.85 - 0.05 * (comp_strength_dash * 1000 - 4000) / 1000
-    else:
-        b1 = 0.65
-    depth_neutral_axis = area_tension_rebars * yield_strength / (0.85 * comp_strength_dash * width * b1)
-    ultimate_moment = area_tension_rebars * yield_strength * (distance_to_As - b1 * depth_neutral_axis / 2)
-    curvature_at_ultimate_moment = 0.003 / depth_neutral_axis
-
-    curvatures = [0, curvature_at_cracking_moment, curvature_at_yielding_moment, curvature_at_ultimate_moment]
-    moments = [0, cracking_moment, yielding_moment, ultimate_moment]
-    return curvatures, moments
-
-
-# section_types = ["Rectangular section", "Circular section",
-#                          "T-shape section", "User-defined section"]
-# positions = [(r, c) for r in range(2) for c in range(2)]
-#
-# for position, section_type in zip(positions, section_types):
-#     i = 1
-#     globals()[f"my_variable_{i}"] = f"{section_type}"
-#     i = i+1
-#
-# print(my_variable_1)
-
 
 
 if __name__ == "__main__":
