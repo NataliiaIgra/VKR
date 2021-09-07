@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 import resources
 from concrete_model import calculate_concrete
 from steel_model import calculate_steel
-from moment_curvature import calculate_moment_curvature
+from moment_curvature import calculate_moment_curvature, DIAMETERS, AREAS
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -103,14 +103,14 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_tab_2 = QtWidgets.QHBoxLayout(self.tab_2)
         self.tab_2.setLayout(self.layout_tab_2)
 
+        reg_exps_positive = QtCore.QRegExp("[1-9][0-9]*[.][0-9]*")
+        self.reg_exps_validator = QtGui.QRegExpValidator()
+        self.reg_exps_validator.setRegExp(reg_exps_positive)
+
         self.concrete_label = QtWidgets.QLabel("Concrete Properties")
         self.concrete_label.setFont(QtGui.QFont('Helvetica', 12))
         self.line_edit_comp_strength = QtWidgets.QLineEdit()
-        # reg_concrete = QtCore.QRegExp("6|[1-5]{1}[.][0-9]{2}")
-        reg_concrete = QtCore.QRegExp("[1-9][0-9]*[.][0-9]*")
-        self.reg_validator_concrete = QtGui.QRegExpValidator()
-        self.reg_validator_concrete.setRegExp(reg_concrete)
-        self.line_edit_comp_strength.setValidator(self.reg_validator_concrete)
+        self.line_edit_comp_strength.setValidator(self.reg_exps_validator)
         self.line_edit_comp_strength.setText("5")
         self.line_edit_comp_strength.setMaximumWidth(100)
         self.line_edit_comp_strength.setToolTip("Concrete compressive strength")
@@ -129,28 +129,22 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_concrete.addWidget(self.concrete_label)
         self.layout_inside_concrete.setAlignment(self.concrete_label, QtCore.Qt.AlignCenter)
         self.layout_inside_concrete.addLayout(self.layout_inside_concrete_1)
-        # self.layout_inside_concrete.setAlignment(QtCore.Qt.AlignCenter)
         self.layout_inside_concrete.addWidget(self.push_button_plot_concrete)
         self.layout_inside_concrete.addWidget(self.canvas_concrete)
 
         self.steel_label = QtWidgets.QLabel("Steel Properties")
         self.steel_label.setFont(QtGui.QFont('Helvetica', 12))
         self.line_edit_yield_strength = QtWidgets.QLineEdit()
-        reg_steel_strength = QtCore.QRegExp("100|[4-9][0-9][.][0-9]{2}")
-        self.reg_validator_steel_strength = QtGui.QRegExpValidator()
-        self.reg_validator_steel_strength.setRegExp(reg_steel_strength)
-        self.line_edit_yield_strength.setValidator(self.reg_validator_steel_strength)
+        self.line_edit_yield_strength.setValidator(self.reg_exps_validator)
         self.line_edit_yield_strength.setText("60")
         self.line_edit_yield_strength.setMaximumWidth(100)
+        self.line_edit_yield_strength.setToolTip("Steel yield strength")
         self.label_yield_strength = QtWidgets.QLabel("fy, ksi")
         self.line_edit_steel_modulus = QtWidgets.QLineEdit()
-        reg_steel_modulus = QtCore.QRegExp("31200|"
-                                           "27[5-9][0-9][0-9]|2[89][0-9][0-9][0-9]|30[0-9][0-9][0-9]|31[01][0-9][0-9]")
-        self.reg_validator_steel_modulus = QtGui.QRegExpValidator()
-        self.reg_validator_steel_modulus.setRegExp(reg_steel_modulus)
-        self.line_edit_steel_modulus.setValidator(self.reg_validator_steel_modulus)
+        self.line_edit_steel_modulus.setValidator(self.reg_exps_validator)
         self.line_edit_steel_modulus.setText("29000")
         self.line_edit_steel_modulus.setMaximumWidth(100)
+        self.line_edit_steel_modulus.setToolTip("Steel Young's modulus")
         self.label_steel_modulus = QtWidgets.QLabel("Es, ksi")
         self.push_button_plot_steel = QtWidgets.QPushButton("Plot steel model")
         self.frame_steel = QtWidgets.QFrame(self.tab_2)
@@ -170,7 +164,6 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_steel.setAlignment(self.steel_label, QtCore.Qt.AlignCenter)
         self.layout_inside_steel.addLayout(self.layout_inside_steel_1)
         self.layout_inside_steel.addLayout(self.layout_inside_steel_2)
-        # self.layout_inside_steel.setAlignment(QtCore.Qt.AlignCenter)
         self.layout_inside_steel.addWidget(self.push_button_plot_steel)
         self.layout_inside_steel.addWidget(self.canvas_steel)
 
@@ -195,6 +188,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.line_edit_height = QtWidgets.QLineEdit()
         self.line_edit_height.setMaximumWidth(100)
+        self.line_edit_height.setValidator(self.reg_exps_validator)
         self.label_height = QtWidgets.QLabel("Height, in.")
         self.layout_inside_section_1 = QtWidgets.QHBoxLayout()
         self.layout_inside_section_1.addWidget(self.line_edit_height)
@@ -202,6 +196,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.line_edit_width = QtWidgets.QLineEdit()
         self.line_edit_width.setMaximumWidth(100)
+        self.line_edit_width.setValidator(self.reg_exps_validator)
         self.label_width = QtWidgets.QLabel("Width, in.")
         self.layout_inside_section_2 = QtWidgets.QHBoxLayout()
         self.layout_inside_section_2.addWidget(self.line_edit_width)
@@ -209,6 +204,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.line_edit_cover = QtWidgets.QLineEdit()
         self.line_edit_cover.setMaximumWidth(100)
+        self.line_edit_cover.setValidator(self.reg_exps_validator)
         self.label_cover = QtWidgets.QLabel("Clear cover, in.")
         self.layout_inside_section_3 = QtWidgets.QHBoxLayout()
         self.layout_inside_section_3.addWidget(self.line_edit_cover)
@@ -222,13 +218,31 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_section_4.addWidget(self.combobox_rebars)
         self.layout_inside_section_4.addWidget(self.label_rebars)
 
-        self.line_edit_number_rebars = QtWidgets.QLineEdit()
-        self.line_edit_number_rebars.setText("2")
-        self.line_edit_number_rebars.setMaximumWidth(100)
-        self.label_number_rebars = QtWidgets.QLabel("# Bottom bars (minimum 2)")
+        reg_exps_positive_2 = QtCore.QRegExp("[1-9][0-9][0-9]")
+        self.reg_exps_validator_2 = QtGui.QRegExpValidator()
+        self.reg_exps_validator_2.setRegExp(reg_exps_positive_2)
+
+        self.line_edit_number_rebars_bottom = QtWidgets.QLineEdit()
+        self.line_edit_number_rebars_bottom.setText("2")
+        self.line_edit_number_rebars_bottom.setMaximumWidth(100)
+        self.line_edit_number_rebars_bottom.setValidator(self.reg_exps_validator_2)
+        self.label_number_rebars_bottom = QtWidgets.QLabel("# Bottom bars (minimum 2)")
         self.layout_inside_section_5 = QtWidgets.QHBoxLayout()
-        self.layout_inside_section_5.addWidget(self.line_edit_number_rebars)
-        self.layout_inside_section_5.addWidget(self.label_number_rebars)
+        self.layout_inside_section_5.addWidget(self.line_edit_number_rebars_bottom)
+        self.layout_inside_section_5.addWidget(self.label_number_rebars_bottom)
+
+        reg_exps_positive_3 = QtCore.QRegExp("0|[1-9][0-9][0-9]")
+        self.reg_exps_validator_3 = QtGui.QRegExpValidator()
+        self.reg_exps_validator_3.setRegExp(reg_exps_positive_3)
+
+        self.line_edit_number_rebars_top = QtWidgets.QLineEdit()
+        self.line_edit_number_rebars_top.setText("0")
+        self.line_edit_number_rebars_top.setMaximumWidth(100)
+        self.line_edit_number_rebars_top.setValidator(self.reg_exps_validator_3)
+        self.label_number_rebars_top = QtWidgets.QLabel("# Top bars (0 or minimum 2)")
+        self.layout_inside_section_6 = QtWidgets.QHBoxLayout()
+        self.layout_inside_section_6.addWidget(self.line_edit_number_rebars_top)
+        self.layout_inside_section_6.addWidget(self.label_number_rebars_top)
 
         self.push_button_draw_section = QtWidgets.QPushButton("Draw section")
 
@@ -238,6 +252,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_inside_section.addLayout(self.layout_inside_section_3)
         self.layout_inside_section.addLayout(self.layout_inside_section_4)
         self.layout_inside_section.addLayout(self.layout_inside_section_5)
+        self.layout_inside_section.addLayout(self.layout_inside_section_6)
         self.layout_inside_section.addWidget(self.push_button_draw_section)
         self.frame_section = QtWidgets.QFrame(self.tab_3)
         self.frame_section.setLayout(self.layout_inside_section)
@@ -345,21 +360,47 @@ class MyMainWindow(QtWidgets.QMainWindow):
             else:
                 self.canvas_concrete.axes.cla()
                 self.canvas_concrete.axes.plot(values[0], values[1])
-                self.canvas_concrete.axes.set_xlabel(f"Strain, in./in.")
+                self.canvas_concrete.axes.set_xlabel(f"Strain x 10e-3, in./in.")
+                scale_x = 1000
+                ticks_x = matplotlib.ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * scale_x))
+                self.canvas_concrete.axes.get_xaxis().set_major_formatter(ticks_x)
                 self.canvas_concrete.axes.set_ylabel(f"Stress, ksi.")
                 self.canvas_concrete.draw()
                 # self.status_bar.showMessage("Concrete model plotted")
 
-
     @QtCore.Slot()
     def plot_steel(self):
-        values = calculate_steel(float(self.line_edit_yield_strength.text()),
-                                 float(self.line_edit_steel_modulus.text()))
-        self.canvas_steel.axes.cla()
-        self.canvas_steel.axes.plot(values[0], values[1])
-        self.canvas_steel.axes.set_xlabel(f"Strain, in./in.")
-        self.canvas_steel.axes.set_ylabel(f"Stress, ksi.")
-        self.canvas_steel.draw()
+        empty_check_yield = self.line_edit_yield_strength.text()
+        error_dialog_steel_yield = QtWidgets.QMessageBox()
+        error_dialog_steel_yield.setText("Value of yield strength should be between 40 and 100")
+        error_dialog_steel_yield.setWindowTitle("Error")
+
+        empty_check_modulus = self.line_edit_steel_modulus.text()
+        error_dialog_steel_modulus = QtWidgets.QMessageBox()
+        error_dialog_steel_modulus.setText("Value of Young's modulus should between 27500 and 31200")
+        error_dialog_steel_modulus.setWindowTitle("Error")
+
+        if empty_check_yield == "":
+            error_dialog_steel_yield.exec_()
+        elif empty_check_modulus == "":
+            error_dialog_steel_modulus.exec_()
+        else:
+            required_strength = float(empty_check_yield)
+            required_modulus = float(empty_check_modulus)
+            if required_strength < 40 or required_strength > 100:
+                error_dialog_steel_yield.exec_()
+            elif required_modulus < 27500 or required_modulus > 31200:
+                error_dialog_steel_modulus.exec_()
+            else:
+                values = calculate_steel(required_strength, required_modulus)
+                self.canvas_steel.axes.cla()
+                self.canvas_steel.axes.plot(values[0], values[1])
+                self.canvas_steel.axes.set_xlabel(f"Strain x 10e-2, in./in.")
+                scale_x = 100
+                ticks_x = matplotlib.ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x * scale_x))
+                self.canvas_steel.axes.get_xaxis().set_major_formatter(ticks_x)
+                self.canvas_steel.axes.set_ylabel(f"Stress, ksi.")
+                self.canvas_steel.draw()
 
     @QtCore.Slot()
     def draw_section(self):
@@ -369,37 +410,35 @@ class MyMainWindow(QtWidgets.QMainWindow):
         height = float(self.line_edit_height.text())
         width = float(self.line_edit_width.text())
         cover = float(self.line_edit_cover.text())
-        number_rebars = int(self.line_edit_number_rebars.text())
+        number_rebars_bottom = int(self.line_edit_number_rebars_bottom.text())
 
-        rect = matplotlib.patches.Rectangle((0.0, 0.0), width, height, color='silver')
+        rect = matplotlib.patches.Rectangle((0.0, 0.0), width, height, color="silver")
         self.canvas_section.axes.add_patch(rect)
 
-        diameters = [(2, 0.25), (3, 0.375), (4, 0.5), (5, 0.625), (6, 0.75), (7, 0.875), (8, 1), (9, 1.128), (10, 1.27),
-                     (11, 1.41), (14, 1.693), (18, 2.257)]
         current_rebar = int(self.combobox_rebars.currentText())
         current_diameter = float()
 
-        for i in diameters:
+        for i in DIAMETERS:
             if current_rebar == i[0]:
                 current_diameter = i[1]
                 break
 
-        rebar_left = matplotlib.patches.Circle((cover + current_diameter / 2, cover + current_diameter / 2),
+        rebar_left_bottom = matplotlib.patches.Circle((cover + current_diameter / 2, cover + current_diameter / 2),
                                                current_diameter / 2, color='black')
-        rebar_right = matplotlib.patches.Circle((width - cover - current_diameter / 2, cover + current_diameter / 2),
+        rebar_right_bottom = matplotlib.patches.Circle((width - cover - current_diameter / 2, cover + current_diameter / 2),
                                                 current_diameter / 2, color='black')
 
-        self.canvas_section.axes.add_patch(rebar_left)
-        self.canvas_section.axes.add_patch(rebar_right)
+        self.canvas_section.axes.add_patch(rebar_left_bottom)
+        self.canvas_section.axes.add_patch(rebar_right_bottom)
 
-        if number_rebars > 2:
-            space = (width - current_diameter - 2 * cover) / (number_rebars - 1)
-            for j in range(number_rebars - 2):
-                distances_for_left_rebar = cover + current_diameter / 2
-                rebar_middle = matplotlib.patches.Circle(
-                    (distances_for_left_rebar + (j + 1) * space, distances_for_left_rebar),
+        if number_rebars_bottom > 2:
+            space_bottom = (width - current_diameter - 2 * cover) / (number_rebars_bottom - 1)
+            for j in range(number_rebars_bottom - 2):
+                distances_for_left_rebar_bottom = cover + current_diameter / 2
+                rebar_middle_bottom = matplotlib.patches.Circle(
+                    (distances_for_left_rebar_bottom + (j + 1) * space_bottom, distances_for_left_rebar_bottom),
                     current_diameter / 2, color='black')
-                self.canvas_section.axes.add_patch(rebar_middle)
+                self.canvas_section.axes.add_patch(rebar_middle_bottom)
 
         self.canvas_section.axes.set_xlim(xmin=0, xmax=width)
         self.canvas_section.axes.set_ylim(ymin=0, ymax=height)
@@ -420,7 +459,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
         steel_modulus = float(self.line_edit_steel_modulus.text())
         cover = float(self.line_edit_cover.text())
         diameter = float(self.combobox_rebars.currentText())
-        number_rebars = int(self.line_edit_number_rebars.text())
+        number_rebars = int(self.line_edit_number_rebars_bottom.text())
         values = calculate_moment_curvature(height, width, comp_strength_dash, yield_strength, steel_modulus, cover,
                                             diameter, number_rebars)
         self.canvas_momcurv.axes.plot(values[0], values[1])
