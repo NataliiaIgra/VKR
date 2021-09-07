@@ -1,5 +1,11 @@
 from math import sqrt
 
+DIAMETERS = [(2, 0.25), (3, 0.375), (4, 0.5), (5, 0.625), (6, 0.75), (7, 0.875), (8, 1), (9, 1.128), (10, 1.27),
+             (11, 1.41), (14, 1.693), (18, 2.257)]
+
+AREAS = [(2, 0.05), (3, 0.11), (4, 0.20), (5, 0.31), (6, 0.44), (7, 0.60), (8, 0.79), (9, 1), (10, 1.27),
+         (11, 1.56), (14, 2.25), (18, 4.00)]
+
 
 def calculate_moment_curvature(height, width, comp_strength_dash, yield_strength, steel_modulus, cover, rebar, number):
     # Cracking point
@@ -9,21 +15,18 @@ def calculate_moment_curvature(height, width, comp_strength_dash, yield_strength
     cracking_moment = modulus_of_rupture * gross_moment_of_inertia / distance_to_tension_fiber
     concrete_modulus = 57000 * sqrt(comp_strength_dash * 1000) / 1000
     curvature_at_cracking_moment = cracking_moment / (concrete_modulus * gross_moment_of_inertia)
-    diameters = [(2, 0.25), (3, 0.375), (4, 0.5), (5, 0.625), (6, 0.75), (7, 0.875), (8, 1), (9, 1.128), (10, 1.27),
-                 (11, 1.41), (14, 1.693), (18, 2.257)]
-    areas = [(2, 0.05), (3, 0.11), (4, 0.20), (5, 0.31), (6, 0.44), (7, 0.60), (8, 0.79), (9, 1), (10, 1.27),
-             (11, 1.56), (14, 2.25), (18, 4.00)]
+
     # Yielding point
     modular_ratio = steel_modulus / concrete_modulus  # TODO
     # singly-reinforced section
     # !!! NOT GOOD PART
     diameter_of_rebar = float()
     area_of_one_rebar = float()
-    for i in diameters:
+    for i in DIAMETERS:
         if rebar == i[0]:
             diameter_of_rebar = i[1]
             break
-    for i in areas:
+    for i in AREAS:
         if rebar == i[0]:
             area_of_one_rebar = i[1]
             break
