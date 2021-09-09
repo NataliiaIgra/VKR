@@ -4,5 +4,6 @@
       <file>Resources/main-icon.png</file>
       <file>Resources/rect.png</file>
       <file>Resources/t-shape.png</file>
+      <file>Resources/emoji.png</file>
   </qresource>
 </RCC>
