@@ -7,9 +7,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
 import resources
-from concrete_model import calculate_concrete
-from steel_model import calculate_steel
-from moment_curvature import calculate_moment_curvature, DIAMETERS, AREAS
+from concrete_model import Concrete
+from steel_model import Steel
+from section_model import RectangularSection, DIAMETERS, AREAS
+from moment_curvature import Calculation
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -31,7 +32,6 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.push_button_plot_concrete.clicked.connect(self.plot_concrete)
         self.push_button_plot_steel.clicked.connect(self.plot_steel)
-        self.push_button_draw_section.clicked.connect(self.draw_section)
         self.push_button_plot_momcurv.clicked.connect(self.plot_momcurv)
 
         self.push_button_save_figure.clicked.connect(self.save_figure)
@@ -66,6 +66,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
         self.push_button_section_type_1 = QtWidgets.QPushButton(section_types[0])
         self.push_button_section_type_1.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.push_button_section_type_1.setCheckable(True)
 
         self.push_button_section_type_2 = QtWidgets.QPushButton(section_types[1])
         self.push_button_section_type_2.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -78,13 +79,6 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.push_button_section_type_4 = QtWidgets.QPushButton(section_types[3])
         self.push_button_section_type_4.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.push_button_section_type_4.setDisabled(True)
-
-        self.button_group = QtWidgets.QButtonGroup()
-        self.button_group.addButton(self.push_button_section_type_1)
-        self.button_group.addButton(self.push_button_section_type_2)
-        self.button_group.addButton(self.push_button_section_type_3)
-        self.button_group.addButton(self.push_button_section_type_4)
-        self.push_button_section_type_1.setCheckable(True)
 
         self.push_button_section_type_1.setIcon(QtGui.QIcon(':/img/Resources/rect.png'))
         self.push_button_section_type_1.setIconSize(QtCore.QSize(200, 200))
@@ -175,6 +169,72 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.frame_concrete.setLayout(self.layout_inside_concrete)
         self.frame_steel.setLayout(self.layout_inside_steel)
 
+        self.layout_tab_4 = QtWidgets.QHBoxLayout(self.tab_4)
+        self.tab_4.setLayout(self.layout_tab_4)
+
+        self.canvas_momcurv = MplCanvas(self, width=8, height=4, dpi=100)
+        self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
+        self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
+        self.frame_plot_momcurv = QtWidgets.QFrame(self.tab_4)
+        self.frame_plot_momcurv.setFrameShape(QtWidgets.QFrame.WinPanel)
+        self.frame_plot_momcurv.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.layout_inside_frame_plot_momcurv = QtWidgets.QVBoxLayout()
+        self.layout_inside_frame_plot_momcurv.addWidget(self.canvas_momcurv)
+        self.frame_plot_momcurv.setLayout(self.layout_inside_frame_plot_momcurv)
+
+        self.push_button_plot_momcurv = QtWidgets.QPushButton("Calculate and plot relationship")
+
+        self.layout_inside_savings = QtWidgets.QHBoxLayout()
+        self.push_button_save_figure = QtWidgets.QPushButton("Save figure")
+        self.push_button_save_momcurv = QtWidgets.QPushButton("Save .txt file")
+        self.layout_inside_savings.addWidget(self.push_button_save_figure)
+        self.layout_inside_savings.addWidget(self.push_button_save_momcurv)
+
+        self.push_button_clean_canvas = QtWidgets.QPushButton("Clear")
+        self.push_button_clean_canvas.setIcon(qApp.style().standardIcon(QtWidgets.QStyle.SP_DialogResetButton))
+
+        self.layout_inside_frame_momcurv = QtWidgets.QVBoxLayout()
+        self.layout_inside_frame_momcurv.addWidget(self.push_button_plot_momcurv)
+        self.layout_inside_frame_momcurv.addLayout(self.layout_inside_savings)
+        self.layout_inside_frame_momcurv.addWidget(self.push_button_clean_canvas)
+
+        self.frame_momcurv = QtWidgets.QFrame(self.tab_4)
+        self.frame_momcurv.setLayout(self.layout_inside_frame_momcurv)
+
+        self.layout_tab_4.addWidget(self.frame_plot_momcurv)
+        self.layout_tab_4.addWidget(self.frame_momcurv)
+
+        self.tab_layout.addWidget(self.tab_widget)
+        self.scroll_area.setWidget(self.scroll_area_widget_contents)
+
+        self.main_layout = QtWidgets.QHBoxLayout(self.central_widget)
+        self.main_layout.addWidget(self.scroll_area)
+
+        self.central_widget.setLayout(self.main_layout)
+
+        self.setCentralWidget(self.central_widget)
+
+        # self.menu_bar = QtWidgets.QMenuBar()
+        # self.file = self.menu_bar.addMenu("File")
+        # self.setMenuBar(self.menu_bar)
+
+        self.status_bar = QtWidgets.QStatusBar()
+        self.status_bar.showMessage("Status Bar Is Ready")
+        self.setStatusBar(self.status_bar)
+        self.resize(1300, 820)
+
+        self.bar = QtWidgets.QToolBar()
+        self.bar.setOrientation(QtCore.Qt.Vertical)
+        self.addToolBar(QtCore.Qt.LeftToolBarArea, self.bar)
+        # self.bar = self.addToolBar("Menu")
+
+        self.bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self._save_action = self.bar.addAction(
+            qApp.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton), "Save", self.on_save
+        )
+        # self._save_action.setShortcut(QtGui.QKeySequence.Save)
+
+    def initRectSectTab(self):
         self.layout_tab_3 = QtWidgets.QHBoxLayout(self.tab_3)
         self.tab_3.setLayout(self.layout_tab_3)
 
@@ -191,10 +251,10 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.line_edit_depth = QtWidgets.QLineEdit()
         self.line_edit_depth.setMaximumWidth(100)
         self.line_edit_depth.setValidator(self.reg_exps_validator)
-        self.label_height = QtWidgets.QLabel("Depth, in.")
+        self.label_depth = QtWidgets.QLabel("Depth, in.")
         self.layout_inside_section_1 = QtWidgets.QHBoxLayout()
         self.layout_inside_section_1.addWidget(self.line_edit_depth)
-        self.layout_inside_section_1.addWidget(self.label_height)
+        self.layout_inside_section_1.addWidget(self.label_depth)
 
         self.line_edit_width = QtWidgets.QLineEdit()
         self.line_edit_width.setMaximumWidth(100)
@@ -262,70 +322,7 @@ class MyMainWindow(QtWidgets.QMainWindow):
         self.layout_tab_3.addWidget(self.frame_draw_section)
         self.layout_tab_3.addWidget(self.frame_section)
 
-        self.layout_tab_4 = QtWidgets.QHBoxLayout(self.tab_4)
-        self.tab_4.setLayout(self.layout_tab_4)
-
-        self.canvas_momcurv = MplCanvas(self, width=8, height=4, dpi=100)
-        self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
-        self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
-        self.frame_plot_momcurv = QtWidgets.QFrame(self.tab_4)
-        self.frame_plot_momcurv.setFrameShape(QtWidgets.QFrame.WinPanel)
-        self.frame_plot_momcurv.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.layout_inside_frame_plot_momcurv = QtWidgets.QVBoxLayout()
-        self.layout_inside_frame_plot_momcurv.addWidget(self.canvas_momcurv)
-        self.frame_plot_momcurv.setLayout(self.layout_inside_frame_plot_momcurv)
-
-        self.push_button_plot_momcurv = QtWidgets.QPushButton("Calculate and plot relationship")
-
-        self.layout_inside_savings = QtWidgets.QHBoxLayout()
-        self.push_button_save_figure = QtWidgets.QPushButton("Save figure")
-        self.push_button_save_momcurv = QtWidgets.QPushButton("Save .txt file")
-        self.layout_inside_savings.addWidget(self.push_button_save_figure)
-        self.layout_inside_savings.addWidget(self.push_button_save_momcurv)
-
-        self.push_button_clean_canvas = QtWidgets.QPushButton("Clear")
-        self.push_button_clean_canvas.setIcon(qApp.style().standardIcon(QtWidgets.QStyle.SP_DialogResetButton))
-
-        self.layout_inside_frame_momcurv = QtWidgets.QVBoxLayout()
-        self.layout_inside_frame_momcurv.addWidget(self.push_button_plot_momcurv)
-        self.layout_inside_frame_momcurv.addLayout(self.layout_inside_savings)
-        self.layout_inside_frame_momcurv.addWidget(self.push_button_clean_canvas)
-
-        self.frame_momcurv = QtWidgets.QFrame(self.tab_4)
-        self.frame_momcurv.setLayout(self.layout_inside_frame_momcurv)
-
-        self.layout_tab_4.addWidget(self.frame_plot_momcurv)
-        self.layout_tab_4.addWidget(self.frame_momcurv)
-
-        self.tab_layout.addWidget(self.tab_widget)
-        self.scroll_area.setWidget(self.scroll_area_widget_contents)
-
-        self.main_layout = QtWidgets.QHBoxLayout(self.central_widget)
-        self.main_layout.addWidget(self.scroll_area)
-
-        self.central_widget.setLayout(self.main_layout)
-
-        self.setCentralWidget(self.central_widget)
-
-        # self.menu_bar = QtWidgets.QMenuBar()
-        # self.file = self.menu_bar.addMenu("File")
-        # self.setMenuBar(self.menu_bar)
-
-        self.status_bar = QtWidgets.QStatusBar()
-        self.status_bar.showMessage("Status Bar Is Ready")
-        self.setStatusBar(self.status_bar)
-        self.resize(1300, 820)
-
-        self.bar = QtWidgets.QToolBar()
-        self.bar.setOrientation(QtCore.Qt.Vertical)
-        self.addToolBar(QtCore.Qt.LeftToolBarArea, self.bar)
-        # self.bar = self.addToolBar("Menu")
-
-        self.bar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        self._save_action = self.bar.addAction(
-            qApp.style().standardIcon(QtWidgets.QStyle.SP_DialogSaveButton), "Save", self.on_save
-        )
-        # self._save_action.setShortcut(QtGui.QKeySequence.Save)
+        self.push_button_draw_section.clicked.connect(self.draw_section)
 
     @QtCore.Slot()
     def on_save(self):
@@ -334,14 +331,16 @@ class MyMainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def activate_tab_3(self):
         if self.tab_widget.count() == 2:
+            self.initRectSectTab()
+            self.section_type = 'Rectangular'
             self.tab_widget.addTab(self.tab_3, "Section properties")
 
     @QtCore.Slot()
     def plot_concrete(self):
-        answer = self.checks_concrete()
+        answer = Concrete.checks_concrete(self.line_edit_comp_strength.text())
         if answer:
-            required_strength = float(self.line_edit_comp_strength.text())
-            values = calculate_concrete(required_strength)
+            self.concrete_model = Concrete(float(self.line_edit_comp_strength.text()))
+            values = self.concrete_model.calculate_concrete()
             self.canvas_concrete.axes.cla()
             self.canvas_concrete.axes.plot(values[0], values[1])
             self.canvas_concrete.axes.set_xlabel(f"Strain x 10e-3, in./in.")
@@ -353,11 +352,10 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def plot_steel(self):
-        answer = self.checks_steel()
+        answer = Steel.checks_steel(self.line_edit_yield_strength.text(), self.line_edit_steel_modulus.text())
         if answer:
-            required_strength = float(self.line_edit_yield_strength.text())
-            required_modulus = float(self.line_edit_steel_modulus.text())
-            values = calculate_steel(required_strength, required_modulus)
+            self.steel_model = Steel(float(self.line_edit_yield_strength.text()), float(self.line_edit_steel_modulus.text()))
+            values = self.steel_model.calculate_steel()
             self.canvas_steel.axes.cla()
             self.canvas_steel.axes.plot(values[0], values[1])
             self.canvas_steel.axes.set_xlabel(f"Strain x 10e-2, in./in.")
@@ -369,7 +367,9 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def draw_section(self):
-        answer = self.checks_section()
+        answer = RectangularSection.checks_section(self.line_edit_depth.text(), self.line_edit_width.text(),
+                                                   self.line_edit_cover.text(), self.line_edit_number_rebars_bottom.text(),
+                                                   self.line_edit_number_rebars_top.text(), self.combobox_rebars.currentText())
         if answer:
             depth = float(self.line_edit_depth.text())
             width = float(self.line_edit_width.text())
@@ -379,11 +379,19 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
             current_rebar = int(self.combobox_rebars.currentText())
             current_diameter = float()
+            current_area = float()
 
             for i in DIAMETERS:
                 if current_rebar == i[0]:
                     current_diameter = i[1]
                     break
+            for i in AREAS:
+                if current_rebar == i[0]:
+                    current_area = i[1]
+                    break
+
+            self.section_model = RectangularSection(depth, width, cover, number_rebars_bottom, number_rebars_top,
+                                                    current_diameter, current_area)
 
             self.canvas_section.axes.cla()
             self.canvas_section.axes.set(xticks=[], yticks=[])
@@ -440,26 +448,13 @@ class MyMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def plot_momcurv(self):
-        answer_concrete = self.checks_concrete()
-        answer_steel = self.checks_steel()
-        answer_section = self.checks_section()
-        if answer_concrete and answer_steel and answer_section:
-            self.canvas_momcurv.axes.cla()
-            depth = float(self.line_edit_depth.text())
-            width = float(self.line_edit_width.text())
-            comp_strength_dash = float(self.line_edit_comp_strength.text())
-            yield_strength = float(self.line_edit_yield_strength.text())
-            steel_modulus = float(self.line_edit_steel_modulus.text())
-            cover = float(self.line_edit_cover.text())
-            diameter = float(self.combobox_rebars.currentText())
-            number_rebars_bottom = int(self.line_edit_number_rebars_bottom.text())
-            number_rebars_top = int(self.line_edit_number_rebars_top.text())
-            self.values = calculate_moment_curvature(depth, width, comp_strength_dash, yield_strength, steel_modulus, cover,
-                                                diameter, number_rebars_bottom, number_rebars_top)
-            self.canvas_momcurv.axes.plot(self.values[0], self.values[1])
-            self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
-            self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
-            self.canvas_momcurv.draw()
+        self.calculation_model = Calculation(self.concrete_model, self.steel_model, self.section_model)
+        self.values = self.calculation_model.calculate_moment_curvature(self.section_type)
+        self.canvas_momcurv.axes.cla()
+        self.canvas_momcurv.axes.plot(self.values[0], self.values[1])
+        self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
+        self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
+        self.canvas_momcurv.draw()
 
     # save method for figure
     @QtCore.Slot()
@@ -486,105 +481,12 @@ class MyMainWindow(QtWidgets.QMainWindow):
                 file.write("{:>15.3e}".format(j))
                 file.write('\n')
 
-
     @QtCore.Slot()
     def clear_figure(self):
         self.canvas_momcurv.axes.cla()
         self.canvas_momcurv.axes.set_xlabel(f"Curvature, 1/in.")
         self.canvas_momcurv.axes.set_ylabel(f"Moment, kip-in.")
         self.canvas_momcurv.draw()
-
-    def checks_concrete(self):
-        empty_check_concrete = self.line_edit_comp_strength.text()
-        error_dialog_concrete = QtWidgets.QMessageBox()
-        error_dialog_concrete.setText("Value of concrete compressive strength should be between 1 and 6")
-        error_dialog_concrete.setWindowTitle("Error in 'Material Properties' tab, concrete")
-        error_dialog_concrete.setWindowIcon(QtGui.QIcon(':/img/Resources/emoji.png'))
-        if empty_check_concrete == "":
-            error_dialog_concrete.exec_()
-            return False
-        else:
-            required_strength = float(empty_check_concrete)
-            if required_strength < 1 or required_strength > 6:
-                error_dialog_concrete.exec_()
-                return False
-        return True
-
-    def checks_steel(self):
-        empty_check_yield = self.line_edit_yield_strength.text()
-        empty_check_modulus = self.line_edit_steel_modulus.text()
-        error_dialog_steel = QtWidgets.QMessageBox()
-        error_dialog_steel.setWindowTitle("Error in 'Material Properties' tab, steel")
-        error_dialog_steel.setWindowIcon(QtGui.QIcon(':/img/Resources/emoji.png'))
-
-        if empty_check_yield == "":
-            error_dialog_steel.setText("Value of steel yield strength should be between 40 and 100")
-            error_dialog_steel.exec_()
-            return False
-        elif empty_check_modulus == "":
-            error_dialog_steel.setText("Value of steel Young's modulus should between 27500 and 31200")
-            error_dialog_steel.exec_()
-            return False
-        else:
-            if float(empty_check_yield) < 40 or float(empty_check_yield) > 100:
-                error_dialog_steel.setText("Value of steel yield strength should be between 40 and 100")
-                error_dialog_steel.exec_()
-                return False
-            elif float(empty_check_modulus) < 27500 or float(empty_check_modulus) > 31200:
-                error_dialog_steel.setText("Value of steel Young's modulus should between 27500 and 31200")
-                error_dialog_steel.exec_()
-                return False
-        return True
-
-    def checks_section(self):
-        error_dialog_section = QtWidgets.QMessageBox()
-        error_dialog_section.setWindowTitle("Error in 'Section properties' tab")
-        error_dialog_section.setWindowIcon(QtGui.QIcon(':/img/Resources/emoji.png'))
-
-        empty_check_depth = self.line_edit_depth.text()
-        empty_check_width = self.line_edit_width.text()
-        empty_check_cover = self.line_edit_cover.text()
-        empty_check_number_rebars_bottom = self.line_edit_number_rebars_bottom.text()
-        empty_check_number_rebars_top = self.line_edit_number_rebars_top.text()
-
-        if empty_check_depth == "" or empty_check_width == "" or empty_check_cover == "" or empty_check_number_rebars_bottom == "" or empty_check_number_rebars_top == "":
-            error_dialog_section.setText("Don't leave any blanks")
-            error_dialog_section.exec_()
-            return False
-        elif float(empty_check_depth) < (width := float(empty_check_width)):
-            error_dialog_section.setText("Width should not be greater than depth")
-            error_dialog_section.exec_()
-            return False
-        elif (cover := float(empty_check_cover)) < 1.5:
-            error_dialog_section.setText("According to ACI 318-14, clear cover should not be less than 1.5 in.")
-            error_dialog_section.exec_()
-            return False
-        elif (number_rebars_bottom := int(empty_check_number_rebars_bottom)) == 1 or (
-                number_rebars_top := int(empty_check_number_rebars_top)) == 1:
-            error_dialog_section.setText("Number of rebars cannot be equal to 1")
-            error_dialog_section.exec_()
-            return False
-        else:
-            current_rebar = int(self.combobox_rebars.currentText())
-            current_diameter = float()
-
-            for i in DIAMETERS:
-                if current_rebar == i[0]:
-                    current_diameter = i[1]
-                    break
-
-            space_bottom_check = (width - current_diameter * number_rebars_bottom - 2 * cover) / (
-                    number_rebars_bottom - 1)
-            space_top_check = float("inf")
-            if number_rebars_top != 0:
-                space_top_check = (width - current_diameter * number_rebars_top - 2 * cover) / (number_rebars_top - 1)
-
-            requirement = max(current_diameter, 1)
-            if space_bottom_check < requirement or space_top_check < requirement:
-                error_dialog_section.setText("Minimum bar spacing requirement is not satisfied. Reduce number of rebars")
-                error_dialog_section.exec_()
-                return False
-        return True
 
 
 if __name__ == "__main__":
